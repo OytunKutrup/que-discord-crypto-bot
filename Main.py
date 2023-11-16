@@ -1,11 +1,10 @@
 from asyncio import sleep
-from datetime import datetime
 import discord
 import configparser
 from discord.ext import commands
 from discord.utils import get
 from binance import AsyncClient, BinanceSocketManager
-from tradingview_ta import TA_Handler, Interval
+from tradingview_ta import TA_Handler
 
 from binance_api import *
 
@@ -187,32 +186,32 @@ async def rsi_bot(ctx, time_frame: str):
     global rsi_flag
     rsi_flag = True
     await ctx.send("RSI scan started")
-    while True:
-        if rsi_flag:
-            for crypto_symbol in crypto_symbols:
-                crpyto_coin = TA_Handler(
-                    symbol=crypto_symbol,
-                    screener="crypto",
-                    exchange="BINANCE",
-                    interval=time_frame
-                )
+    while rsi_flag:
+        for crypto_symbol in crypto_symbols:
+            crpyto_coin = TA_Handler(
+                symbol=crypto_symbol,
+                screener="crypto",
+                exchange="BINANCE",
+                interval=time_frame
+            )
+            try:
                 rsi_value = int(crpyto_coin.get_analysis().indicators.get("RSI"))
-                print(f"{crypto_symbol} - {time_frame} RSI: {rsi_value} !")
-                if rsi_value >= 80 or rsi_value <= 20:
-                    await ctx.send(f"{crypto_symbol} - {time_frame} RSI: {rsi_value} !")
-            if time_frame != "1m":
-                await sleep(60 * 1)
-            else:
-                await sleep(1)
+            except Exception:
+                pass
+            print(f"{crypto_symbol} - {time_frame} RSI: {rsi_value} !")
+            if rsi_value >= 80 or rsi_value <= 15:
+                await ctx.send(f"{crypto_symbol} - {time_frame} RSI: {rsi_value} !")
+        if time_frame != "1m":
+            await sleep(60 * 1)
         else:
-            await ctx.send("RSI scan stopped")
-            break
+            await sleep(1)
 
 
 @bot.command(aliases=['rsistop', 'rsibotstop'])
 async def rsi_bot_stop(ctx):
     global rsi_flag
     rsi_flag = False
+    await ctx.send("RSI scan stopped")
 
 
 @bot.command(aliases=['orderinfo'])
