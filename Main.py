@@ -144,9 +144,9 @@ async def alert(ctx, symbol: str, alert_price: float):
                     break
 
 
-@alert.error
-async def alert_error(ctx, error):
-    await ctx.send('There are missing values for the command.')
+# @alert.error
+# async def alert_error(ctx, error):
+#     await ctx.send(error + 'There are missing values for the command.')
 
 
 @bot.command(aliases=['aa', 'activealerts'])
