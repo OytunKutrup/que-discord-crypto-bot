@@ -1,7 +1,6 @@
 discord==1.7.3
 python-binance==1.0.12
 tradingview_ta==3.3.0
-pip~=21.2.4
 lxml~=4.9.1
 tornado~=6.2
 setuptools~=58.1.0
