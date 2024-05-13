@@ -1,6 +1,6 @@
 from asyncio import sleep
 import discord
-import configparser
+import aiohttp
 from discord.ext import commands
 from discord.utils import get
 from binance import AsyncClient, BinanceSocketManager
@@ -20,16 +20,19 @@ bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 client = discord.Client(intents=intents)
 alerts = {}
 rsi_flag = True
+oi_flag = True
 crypto_symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT", "DOGEUSDT", "TRXUSDT", "LINKUSDT",
-                  "MATICUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "SHIBUSDT", "AVAXUSDT", "XLMUSDT", "XMRUSDT",
-                  "ATOMUSDT", "UNIUSDT", "ETCUSDT", "FILUSDT", "HBARUSDT", "ICPUSDT", "APTUSDT", "LDOUSDT", "VETUSDT",
+                  "MATICUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "SHIBUSDT", "AVAXUSDT", "XLMUSDT", "TONUSDT",
+                  "ATOMUSDT", "UNIUSDT", "ETCUSDT", "FILUSDT", "HBARUSDT", "ICPUSDT", "APTUSDT", "LDOUSDT", "PIXELUSDT",
                   "MKRUSDT", "QNTUSDT", "AAVEUSDT", "OPUSDT", "NEARUSDT", "ARBUSDT", "INJUSDT", "GRTUSDT", "RNDRUSDT",
                   "STXUSDT", "RUNEUSDT", "ALGOUSDT", "IMXUSDT", "AXSUSDT", "EGLDUSDT", "SANDUSDT", "MANAUSDT",
-                  "XTZUSDT", "EOSUSDT", "THETAUSDT", "FTMUSDT", "NEOUSDT", "SNXUSDT", "MINAUSDT", "KAVAUSDT",
-                  "FLOWUSDT", "XECUSDT", "CFXUSDT", "APEUSDT", "CHZUSDT", "GALAUSDT", "PEPEUSDT", "IOTAUSDT", "ZECUSDT",
-                  "DYDXUSDT", "FXSUSDT", "TWTUSDT", "CRVUSDT", "KLAYUSDT", "GMXUSDT", "WOOUSDT", "SUIUSDT", "COMPUSDT",
-                  "LUNCUSDT", "FLOKIUSDT", "ROSEUSDT", "ARUSDT", "GASUSDT", "LOOMUSDT", "TRBUSDT", "ARKUSDT",
-                  "POLYXUSDT", "FETUSDT", "UNFIUSDT", "BLZUSDT"]
+                  "XTZUSDT", "THETAUSDT", "FTMUSDT", "NEOUSDT", "SNXUSDT", "MINAUSDT", "KAVAUSDT", "FLOWUSDT",
+                  "XECUSDT", "CFXUSDT", "APEUSDT", "CHZUSDT", "GALAUSDT", "PEPEUSDT", "IOTAUSDT", "ZECUSDT", "DYDXUSDT",
+                  "FXSUSDT", "TWTUSDT", "CRVUSDT", "KLAYUSDT", "GMXUSDT", "WOOUSDT", "SUIUSDT", "COMPUSDT", "LUNCUSDT",
+                  "FLOKIUSDT", "ROSEUSDT", "ARUSDT", "GASUSDT", "LOOMUSDT", "TRBUSDT", "ARKUSDT", "POLYXUSDT",
+                  "FETUSDT", "UNFIUSDT", "BLZUSDT", "AIUSDT", "ARKMUSDT", "RLCUSDT", "WLDUSDT", "C98USDT", "BEAMXUSDT",
+                  "MDTUSDT", "AGIXUSDT", "NFPUSDT", "XAI", "NMRUSDT", "JUPUSDT", "MANTAUSDT", "BLURUSDT", "FRONTUSDT",
+                  "PEOPLEUSDT", "UMAUSDT", "HIGHUSDT", "API3USDT"]
 
 
 @bot.event
@@ -144,9 +147,9 @@ async def alert(ctx, symbol: str, alert_price: float):
                     break
 
 
-# @alert.error
-# async def alert_error(ctx, error):
-#     await ctx.send(error + 'There are missing values for the command.')
+@alert.error
+async def alert_error(ctx, error):
+    await ctx.send(error + 'There are missing values for the command.')
 
 
 @bot.command(aliases=['aa', 'activealerts'])
@@ -178,7 +181,7 @@ async def delete_alert(ctx, symbol: str, alert_price: float):
 
 @delete_alert.error
 async def delete_alert_error(ctx, error):
-    await ctx.send('There are missing values for the command.')
+    await ctx.send(error + 'There are missing values for the command.')
 
 
 @bot.command(aliases=['rsi', 'rsibot'])
@@ -194,6 +197,7 @@ async def rsi_bot(ctx, time_frame: str):
                 exchange="BINANCE",
                 interval=time_frame
             )
+            rsi_value = 0
             try:
                 rsi_value = int(crpyto_coin.get_analysis().indicators.get("RSI"))
             except Exception:
@@ -214,17 +218,88 @@ async def rsi_bot_stop(ctx):
     await ctx.send("RSI scan stopped")
 
 
-@bot.command(aliases=['orderinfo'])
-async def order(ctx):
-    await ctx.send("*long/short symbol price quantity stop_price take_profit_price")
+@bot.command(aliases=['order', 'o'])
+async def futures_order_open(ctx, symbol: str, size: float):
+    price = get_price(symbol, binance_api_key_secret).json()["price"]
+    quantity = abs(size / float(price))
+    if quantity < 1:
+        quantity = round(quantity, 3)
+    else:
+        quantity = quantity // 1
+    if size > 0:
+        msg = create_market_order(symbol, "BUY", "LONG", float(quantity), binance_api_key, binance_api_key_secret)
+    else:
+        msg = create_market_order(symbol, "SELL", "SHORT", float(quantity), binance_api_key, binance_api_key_secret)
+    if len(msg.keys()) > 5:
+        await ctx.send("Position opened")
+    else:
+        txt = "Error creating order: " + msg['msg']
+        await ctx.send(txt)
 
 
-@bot.command(aliases=['long'])
-async def futures_long_order(ctx, symbol: str, price: float, quantity: float, stop_price: float,
-                             take_profit_price: float):
-    await futures_create_order_with_sl_tp(symbol, "BUY", price, quantity, stop_price, take_profit_price,
-                                          binance_api_key, binance_api_key_secret)
-    await ctx.send("Order created")
+@bot.command(aliases=['openpositions', 'op'])
+async def print_open_positions(ctx):
+    open_position_json = open_positions(binance_api_key, binance_api_key_secret)
+    for position in open_position_json:
+        txt = position["symbol"] + "-" + position["positionSide"] + "= " + str(
+            round(float(position["unRealizedProfit"]), 2)) + "$"
+        await ctx.send(txt)
+    if len(open_position_json) == 0:
+        await ctx.send("There are no open positions.")
+
+
+@bot.command(aliases=['openinterest', 'oi'])
+async def open_interest_start(ctx, period: str, multiplier: int):
+    global oi_flag
+    oi_flag = True
+    alerted_coins = {}
+    await ctx.send("Open interest scan started")
+    for cr in crypto_symbols:
+        alerted_coins[cr] = 99
+    while oi_flag:
+        for cr in crypto_symbols:
+            url = 'https://fapi.binance.com/futures/data/openInterestHist?'
+            params = {'symbol': cr,
+                      "period": period,
+                      "limit": 30}
+
+            signature = hmac.new(
+                binance_api_key_secret.encode("utf-8"), urllib.parse.urlencode(params).encode("utf-8"),
+                hashlib.sha256).hexdigest()
+            final_url = url + urllib.parse.urlencode(params) + "&signature=" + signature
+            async with aiohttp.ClientSession() as session:
+                async with session.get(final_url, headers={"Content-Type": "application/json;charset=utf-8",
+                                                           "X-MBX-APIKEY": binance_api_key}) as resp:
+                    r = await resp.json()
+            o_i_vals = []
+            for a in r:
+                o_i_vals.append(a["sumOpenInterest"])
+            o_i_diff_vals = []
+            for i in range(len(o_i_vals) - 1):
+                o_i_diff_vals.append(float(o_i_vals[i + 1]) - float(o_i_vals[i]))
+            o_i_diff_vals = [abs(float(item)) for item in o_i_diff_vals]
+            oi_mult = alerted_coins[cr]
+            time_mult = 99
+            for i in range(5, len(o_i_diff_vals)):
+                previous_values = o_i_diff_vals[i - 5:i]
+                average = sum(previous_values) / len(previous_values)
+                if average * multiplier < o_i_diff_vals[i]:
+                    oi_mult = o_i_diff_vals[i] / average
+                    time_mult = i
+            if alerted_coins[cr] != oi_mult:
+                print_text = cr + " " + str((30 - time_mult) * 5) + "min ago multiplier: " + format(oi_mult, ".2f")
+                await ctx.send(print_text)
+                print(print_text)
+                alerted_coins[cr] = oi_mult
+            await session.close()
+        await sleep(300)
+
+
+@bot.command(aliases=['openintereststop', 'oistop'])
+async def open_interest_stop(ctx):
+    global oi_flag
+    oi_flag = False
+    await ctx.send("Open interest scan stopped")
 
 
 bot.run(DISCORD_TOKEN)
