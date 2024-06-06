@@ -1,3 +1,4 @@
+import asyncio
 from asyncio import sleep
 import discord
 import aiohttp
@@ -19,6 +20,7 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=BOT_PREFIX, intents=intents)
 client = discord.Client(intents=intents)
 alerts = {}
+solana_alerts = {}
 rsi_flag = True
 oi_flag = True
 crypto_symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT", "DOGEUSDT", "TRXUSDT", "LINKUSDT",
@@ -300,6 +302,63 @@ async def open_interest_stop(ctx):
     global oi_flag
     oi_flag = False
     await ctx.send("Open interest scan stopped")
+
+
+@bot.command(aliases=["sola"])
+async def sol_alert(ctx, address: str, alert_price: float):
+    solana_alerts.setdefault(address, [])
+    solana_alerts[address].append(alert_price)
+
+    await ctx.send(f"Alert set for {address} price: {alert_price}")
+    first_price = 0
+    while True:
+        url = 'https://public-api.birdeye.so/defi/price?'
+        final_url = url + "include_liquidity=true&" + "address=" + address
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(final_url,
+                                   headers={"accept": "application/json", "x-chain": "solana",
+                                            "X-API-KEY": "5b2d0aaac4c04b8281d543110292a406"}) as resp:
+                response = await resp.json()
+            await session.close()
+        price = response["data"]["value"]
+        print(price)
+        if first_price == 0:
+            first_price = price
+        if first_price < alert_price:
+            if price >= alert_price:
+                await ctx.send(f"!!! ALERT {address} = {alert_price} !!!")
+                for x in range(len(solana_alerts.get(address))):
+                    if solana_alerts[address][x] == alert_price:
+                        del solana_alerts[address][x]
+                        if len(solana_alerts[address]) == 0:
+                            solana_alerts.pop(address)
+                        break
+                break
+        else:
+            if price <= alert_price:
+                await ctx.send(f"!!! ALERT {address} = {alert_price} !!!")
+                for x in range(len(solana_alerts.get(address))):
+                    if solana_alerts[address][x] == alert_price:
+                        del solana_alerts[address][x]
+                        if len(solana_alerts[address]) == 0:
+                            solana_alerts.pop(address)
+                        break
+                break
+        await asyncio.sleep(1)
+
+
+@bot.command(aliases=['solaa', 'solactivealerts'])
+async def solana_active_alerts(ctx):
+    if len(solana_alerts.items()) != 0:
+        for key in solana_alerts:
+            prices = []
+            for i in range(len(solana_alerts.get(key))):
+                prices.append(solana_alerts.get(key)[i])
+            await ctx.send(f"{key} : {prices}")
+
+    else:
+        await ctx.send(f"There is no active solana alert!")
 
 
 bot.run(DISCORD_TOKEN)
