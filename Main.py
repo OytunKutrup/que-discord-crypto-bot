@@ -6,7 +6,7 @@ from discord.ext import commands
 from discord.utils import get
 from binance import AsyncClient, BinanceSocketManager
 from tradingview_ta import TA_Handler
-
+from crypto_symbols import crypto_symbols
 from binance_api import *
 
 config = configparser.ConfigParser()
@@ -25,18 +25,6 @@ solana_alerts = {}
 active_solana_alerts = set()
 rsi_flag = True
 oi_flag = True
-crypto_symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT", "DOGEUSDT", "TRXUSDT", "LINKUSDT",
-                  "MATICUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "SHIBUSDT", "AVAXUSDT", "XLMUSDT", "TONUSDT",
-                  "ATOMUSDT", "UNIUSDT", "ETCUSDT", "FILUSDT", "HBARUSDT", "ICPUSDT", "APTUSDT", "LDOUSDT", "PIXELUSDT",
-                  "MKRUSDT", "QNTUSDT", "AAVEUSDT", "OPUSDT", "NEARUSDT", "ARBUSDT", "INJUSDT", "GRTUSDT", "RNDRUSDT",
-                  "STXUSDT", "RUNEUSDT", "ALGOUSDT", "IMXUSDT", "AXSUSDT", "EGLDUSDT", "SANDUSDT", "MANAUSDT",
-                  "XTZUSDT", "THETAUSDT", "FTMUSDT", "NEOUSDT", "SNXUSDT", "MINAUSDT", "KAVAUSDT", "FLOWUSDT",
-                  "XECUSDT", "CFXUSDT", "APEUSDT", "CHZUSDT", "GALAUSDT", "PEPEUSDT", "IOTAUSDT", "ZECUSDT", "DYDXUSDT",
-                  "FXSUSDT", "TWTUSDT", "CRVUSDT", "KLAYUSDT", "GMXUSDT", "WOOUSDT", "SUIUSDT", "COMPUSDT", "LUNCUSDT",
-                  "FLOKIUSDT", "ROSEUSDT", "ARUSDT", "GASUSDT", "LOOMUSDT", "TRBUSDT", "ARKUSDT", "POLYXUSDT",
-                  "FETUSDT", "UNFIUSDT", "BLZUSDT", "AIUSDT", "ARKMUSDT", "RLCUSDT", "WLDUSDT", "C98USDT", "BEAMXUSDT",
-                  "MDTUSDT", "AGIXUSDT", "NFPUSDT", "XAI", "NMRUSDT", "JUPUSDT", "MANTAUSDT", "BLURUSDT", "FRONTUSDT",
-                  "PEOPLEUSDT", "UMAUSDT", "HIGHUSDT", "API3USDT"]
 
 
 @bot.event
